@@ -1,6 +1,8 @@
 import pprint
 
 import cv2
+import os
+import tabulate
 import json
 import mediapipe as mp
 import numpy as np
@@ -80,13 +82,58 @@ options = HandLandmarkerOptions(
 
 detector = HandLandmarker.create_from_options(options)
 
-mp_image = mp.Image.create_from_file("Dataset/datatest/A/IMG_1153.JPG")
 
-hand_landmarker_result = detector.detect(mp_image)
+r = ['WRIST', 'THUMB_CMC', 'THUMB_MCP', 'THUMB_IP', 'THUMB_TIP', 'INDEX_FINGER_MCP', 'INDEX_FINGER_PIP', 'INDEX_FINGER_DIP', 'INDEX_FINGER_TIP', 'MIDDLE_FINGER_MCP', 'MIDDLE_FINGER_PIP', 'MIDDLE_FINGER_DIP', 'MIDDLE_FINGER_TIP', 'RING_FINGER_MCP', 'RING_FINGER_PIP', 'RING_FINGER_DIP', 'RING_FINGER_TIP', 'PINKY_MCP', 'PINKY_PIP', 'PINKY_DIP', 'PINKY_TIP',]
+alphs = os.listdir('./Dataset/datatrain')
 
-pprint.pprint(hand_landmarker_result.handedness[0][0].index)
+data_list = []
 
-annotated_image = draw_landmarks_on_image(mp_image.numpy_view(), hand_landmarker_result)
-cv2.imshow("img", cv2.cvtColor(annotated_image, cv2.COLOR_RGB2BGR))
-cv2.waitKey(0)
+for alph in alphs:
+
+    images = os.listdir(os.path.join('./Dataset/datatrain', alph))
+
+    for img in images:
+        print(alph + ' - ' + img)
+        data = {}
+        data['LABEL'] = alph;
+        data['IMAGE_NAME'] = img
+        
+        mp_image = mp.Image.create_from_file(os.path.join('./Dataset/datatrain', alph, img))
+
+        hand_landmarker_result = detector.detect(mp_image)
+
+        handedness = hand_landmarker_result.handedness
+        hand_landmarks = hand_landmarker_result.hand_landmarks
+
+        for idx_hn in range(len(handedness)):
+            category_name = handedness[idx_hn][0].category_name
+
+            if (category_name == 'Right'):
+                data['RIGHT_PROB'] = handedness[idx_hn][0].score
+                for idx_hl in range(len(hand_landmarks[idx_hn])):
+                    hand_landmark = hand_landmarks[idx_hn][idx_hl];
+                    data[category_name + '_X_' +r[idx_hl] ] = hand_landmark.x
+                    data[category_name + '_Y_' +r[idx_hl] ] = hand_landmark.y
+                    data[category_name + '_Z_' +r[idx_hl] ] = hand_landmark.z
+            elif (category_name == 'Left'):
+                data['LEFT_PROB'] = handedness[idx_hn][0].score
+                for idx_hl in range(len(hand_landmarks[idx_hn])):
+                    hand_landmark = hand_landmarks[idx_hn][idx_hl];
+                    data[category_name + '_X_' +r[idx_hl] ] = hand_landmark.x
+                    data[category_name + '_Y_' +r[idx_hl] ] = hand_landmark.y
+                    data[category_name + '_Z_' +r[idx_hl] ] = hand_landmark.z
+
+        data_list.append(data)     
+
+
+
+
+with open('./data.json', 'w') as f:
+    json.dump(data_list, f, indent=4)
+
+pprint.pprint(data_list)
+
+# annotated_image = draw_landmarks_on_image(mp_image.numpy_view(), hand_landmarker_result)
+# cv2.imshow("img", cv2.cvtColor(annotated_image, cv2.COLOR_RGB2BGR))
+# cv2.waitKey(0)
 
